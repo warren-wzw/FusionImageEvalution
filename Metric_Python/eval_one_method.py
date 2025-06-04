@@ -12,7 +12,7 @@ from openpyxl.utils import get_column_letter
 
 warnings.filterwarnings("ignore")
 DATASET="MSRS"
-METHOD = ["DiFusion"]
+METHOD = ["EMDiFusion"]
 INFRARED=f"../source_image/{DATASET}/ir"
 VISIBLE=f"../source_image/{DATASET}/vi"
 ROUND=6
@@ -69,21 +69,8 @@ if __name__ == '__main__':
         f_dir = os.path.join(f'../Results/{DATASET}/', Method)
         save_dir = f'../Excel/{DATASET}'
         os.makedirs(save_dir, exist_ok=True)
-        EN_list = []
-        MI_list = []
-        SF_list = []
-        AG_list = []
-        SD_list = []
-        CC_list = []
-        SCD_list = []
-        VIF_list = []
-        MSE_list = []
-        PSNR_list = []
-        Qabf_list = []
-        Nabf_list = []
-        SSIM_list = []
-        MS_SSIM_list = []
-        filename_list = ['']
+        EN_list, MI_list, SF_list, AG_list, SD_list,CC_list, SCD_list, VIF_list,MSE_list,PSNR_list,Qabf_list,\
+        Nabf_list,SSIM_list, MS_SSIM_list, filename_list= [],[],[],[],[],[],[],[],[],[],[],[],[],[],['']
         names=["EN","MI","SF","AG","SD","CC","SCD","VIF","MSE","PSNR","Qabf","Nabf","SSIM","MS_SSIM"]
         name_lists = [EN_list, MI_list, SF_list, AG_list, SD_list, CC_list, SCD_list, VIF_list, MSE_list,     
                         PSNR_list, Qabf_list, Nabf_list, SSIM_list, MS_SSIM_list]
