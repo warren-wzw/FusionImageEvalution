@@ -130,7 +130,38 @@ def ssim(X,
         return ssim_per_channel.mean()
     else:
         return ssim_per_channel.mean(dim=1)
+    
+import cv2
 
+def ensure_min_size(img, min_side=160):
+    """保证图像最短边 >= min_side"""
+    is_tensor = False
+    if torch.is_tensor(img):
+        is_tensor = True
+        img = img.detach().cpu().numpy()
+        # CHW -> HWC
+        if img.ndim == 3:
+            img = np.transpose(img, (1,2,0))
+
+    h, w = img.shape[:2]
+
+    # 避免尺寸为0
+    if h == 0 or w == 0:
+        raise ValueError(f"Image has invalid shape: {img.shape}")
+
+    if min(h, w) < min_side:
+        scale = min_side / min(h, w)
+        new_w = max(1, int(w * scale))
+        new_h = max(1, int(h * scale))
+        img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+
+    # HWC -> CHW
+    if is_tensor:
+        if img.ndim == 3:
+            img = np.transpose(img, (2,0,1))
+        img = torch.from_numpy(img)
+
+    return img
 
 def ms_ssim(
         X,
@@ -141,8 +172,7 @@ def ms_ssim(
         win_sigma=1.5,
         win=None,
         weights=None,
-        K=(0.01, 0.03)
-):
+        K=(0.01, 0.03)):
     # 输出的是灰度图像，其shape是[H, W]
     # 需要扩展为 [B, C, H, W]
     X = TF.to_tensor(X).unsqueeze(0).unsqueeze(0) * 255.0
@@ -170,6 +200,7 @@ def ms_ssim(
     if not (win_size % 2 == 1):
         raise ValueError("Window size should be odd.")
 
+    #X=ensure_min_size(X)
     smaller_side = min(X.shape[-2:])
     assert smaller_side > (win_size - 1) * (
             2 ** 4

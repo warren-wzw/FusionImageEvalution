@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.signal import convolve2d
+from scipy.signal import convolve2d, fftconvolve
 from Qabf import get_Qabf
 from Nabf import get_Nabf
 import math
@@ -7,11 +7,8 @@ from ssim import ssim, ms_ssim
 
 
 def EN_function(image_array):
-    # 计算图像的直方图
-    histogram, bins = np.histogram(image_array, bins=256, range=(0, 255))
-    # 将直方图归一化
-    histogram = histogram / float(np.sum(histogram))
-    # 计算熵
+    histogram, bins = np.histogram(image_array, bins=256, range=(0, 255)) #computes the histogram
+    histogram = histogram / float(np.sum(histogram))#normalizes
     entropy = -np.sum(histogram * np.log2(histogram + 1e-7))
     return entropy
 
@@ -79,19 +76,19 @@ def vifp_mscale(ref, dist):
         win = fspecial_gaussian((N, N), N / 5)
 
         if scale > 1:
-            ref = convolve2d(ref, win, mode='valid')
-            dist = convolve2d(dist, win, mode='valid')
+            ref = fftconvolve(ref, win, mode='valid')
+            dist = fftconvolve(dist, win, mode='valid')
             ref = ref[::2, ::2]
             dist = dist[::2, ::2]
 
-        mu1 = convolve2d(ref, win, mode='valid')
-        mu2 = convolve2d(dist, win, mode='valid')
+        mu1 = fftconvolve(ref, win, mode='valid')
+        mu2 = fftconvolve(dist, win, mode='valid')
         mu1_sq = mu1 * mu1
         mu2_sq = mu2 * mu2
         mu1_mu2 = mu1 * mu2
-        sigma1_sq = convolve2d(ref * ref, win, mode='valid') - mu1_sq
-        sigma2_sq = convolve2d(dist * dist, win, mode='valid') - mu2_sq
-        sigma12 = convolve2d(ref * dist, win, mode='valid') - mu1_mu2
+        sigma1_sq = fftconvolve(ref * ref, win, mode='valid') - mu1_sq
+        sigma2_sq = fftconvolve(dist * dist, win, mode='valid') - mu2_sq
+        sigma12 = fftconvolve(ref * dist, win, mode='valid') - mu1_mu2
         sigma1_sq[sigma1_sq < 0] = 0
         sigma2_sq[sigma2_sq < 0] = 0
 
@@ -150,31 +147,19 @@ def Nabf_function(A, B, F):
 
 
 def Hab(im1, im2, gray_level):
-    hang, lie = im1.shape
-    count = hang * lie
     N = gray_level
     h = np.zeros((N, N))
-    for i in range(hang):
-        for j in range(lie):
-            h[im1[i, j], im2[i, j]] = h[im1[i, j], im2[i, j]] + 1
+    np.add.at(h, (im1.ravel(), im2.ravel()), 1)
     h = h / np.sum(h)
-    im1_marg = np.sum(h, axis=0)
-    im2_marg = np.sum(h, axis=1)
-    H_x = 0
-    H_y = 0
-    for i in range(N):
-        if im1_marg[i] != 0:
-            H_x = H_x + im1_marg[i] * math.log2(im1_marg[i])
-    for i in range(N):
-        if im2_marg[i] != 0:
-            H_y = H_y + im2_marg[i] * math.log2(im2_marg[i])
-    H_xy = 0
-    for i in range(N):
-        for j in range(N):
-            if h[i, j] != 0:
-                H_xy = H_xy + h[i, j] * math.log2(h[i, j])
-    MI = H_xy - H_x - H_y
-    return MI
+    im1_marg = np.sum(h, axis=1)
+    im2_marg = np.sum(h, axis=0)
+    mask_x = im1_marg > 0
+    mask_y = im2_marg > 0
+    mask_xy = h > 0
+    H_x = np.sum(im1_marg[mask_x] * np.log2(im1_marg[mask_x]))
+    H_y = np.sum(im2_marg[mask_y] * np.log2(im2_marg[mask_y]))
+    H_xy = np.sum(h[mask_xy] * np.log2(h[mask_xy]))
+    return H_xy - H_x - H_y
 
 
 def MI_function(A, B, F, gray_level=256):
